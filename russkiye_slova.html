@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Русские Слова – Russian Vocab Trainer</title>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #1f2937;
+    --accent: #4f8ef7;
+    --accent2: #e63946;
+    --gold: #f4c430;
+    --green: #3ddc97;
+    --red: #e63946;
+    --text: #f0f6fc;
+    --muted: #8b949e;
+    --border: rgba(255,255,255,0.07);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+  body::before {
+    content: 'Р';
+    position: fixed; top: -60px; right: -40px;
+    font-family: 'Unbounded', sans-serif;
+    font-size: 400px; font-weight: 900;
+    color: rgba(79,142,247,0.04);
+    pointer-events: none; z-index: 0;
+    line-height: 1;
+  }
+  body::after {
+    content: '';
+    position: fixed; bottom: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent2) 33%, #ffffff 33%, #ffffff 66%, var(--accent) 66%);
+    z-index: 100;
+  }
+  .app { position: relative; z-index: 1; max-width: 780px; margin: 0 auto; padding: 28px 20px 70px; }
+
+  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; }
+  .logo { font-family: 'Unbounded', sans-serif; font-size: 22px; font-weight: 900; letter-spacing: -0.5px; }
+  .logo span { color: var(--accent); }
+  .logo em { color: var(--accent2); font-style: normal; }
+  .word-count { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 6px 14px; font-size: 13px; color: var(--muted); }
+
+  .tabs { display: flex; gap: 5px; margin-bottom: 28px; background: var(--surface); border-radius: 14px; padding: 5px; }
+  .tab { flex: 1; padding: 9px 4px; border: none; background: transparent; color: var(--muted); font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 500; border-radius: 10px; cursor: pointer; transition: all 0.2s; text-align: center; }
+  .tab.active { background: var(--accent); color: white; }
+  .tab:hover:not(.active) { background: var(--surface2); color: var(--text); }
+
+  .panel { display: none; animation: fadeIn 0.3s ease; }
+  .panel.active { display: block; }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 28px; margin-bottom: 16px; }
+  .section-title { font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; }
+  .divider { height: 1px; background: var(--border); margin: 20px 0; }
+
+  .input-row { display: flex; gap: 10px; margin-bottom: 14px; }
+  .input-row input { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 11px 16px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 15px; outline: none; transition: border-color 0.2s; }
+  .input-row input:focus { border-color: var(--accent); }
+  .input-row input::placeholder { color: var(--muted); }
+  .input-row input.cyrillic { font-size: 16px; }
+
+  .btn { background: var(--accent); color: white; border: none; border-radius: 10px; padding: 11px 22px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.18s; white-space: nowrap; }
+  .btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
+  .btn:active { transform: translateY(0); }
+  .btn.secondary { background: var(--surface2); border: 1px solid var(--border); color: var(--text); }
+  .btn.secondary:hover { border-color: var(--accent); }
+  .btn.red { background: var(--accent2); }
+
+  .word-list { max-height: 300px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--surface2) transparent; }
+  .word-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-radius: 10px; transition: background 0.15s; }
+  .word-item:hover { background: var(--surface2); }
+  .word-pair { display: flex; gap: 12px; align-items: center; font-size: 14px; }
+  .ru { font-weight: 600; font-size: 16px; }
+  .arrow { color: var(--muted); font-size: 12px; }
+  .en { color: var(--muted); }
+  .del-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 16px; padding: 2px 6px; border-radius: 6px; transition: all 0.15s; }
+  .del-btn:hover { color: var(--red); background: rgba(230,57,70,0.12); }
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 14px; }
+  .empty-state .big { font-size: 36px; margin-bottom: 10px; }
+
+  /* Cyrillic keyboard */
+  .keyboard { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 12px; }
+  .key { background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; padding: 7px 10px; font-size: 16px; cursor: pointer; transition: all 0.12s; color: var(--text); min-width: 36px; text-align: center; }
+  .key:hover { background: var(--accent); border-color: var(--accent); color: white; }
+  .key.space-key { flex: 1; font-size: 12px; color: var(--muted); }
+  .key.back-key { background: rgba(230,57,70,0.15); border-color: rgba(230,57,70,0.3); color: var(--red); }
+  .key.back-key:hover { background: var(--red); color: white; }
+  .kb-label { font-size: 11px; color: var(--muted); margin-bottom: 8px; letter-spacing: 1px; text-transform: uppercase; }
+
+  /* Progress */
+  .progress-bar { height: 4px; background: var(--surface2); border-radius: 4px; margin-bottom: 18px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--gold)); border-radius: 4px; transition: width 0.4s ease; }
+
+  /* Flashcard */
+  .flashcard-wrap { perspective: 1000px; margin-bottom: 20px; }
+  .flashcard { width: 100%; min-height: 220px; background: var(--surface2); border: 1px solid var(--border); border-radius: 24px; cursor: pointer; transition: transform 0.6s, box-shadow 0.2s; transform-style: preserve-3d; position: relative; }
+  .flashcard:hover { box-shadow: 0 8px 40px rgba(79,142,247,0.15); }
+  .flashcard.flipped { transform: rotateY(180deg); }
+  .fc-front, .fc-back { position: absolute; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; backface-visibility: hidden; padding: 32px; }
+  .fc-back { transform: rotateY(180deg); }
+  .fc-lang { font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin-bottom: 12px; }
+  .fc-word { font-family: 'Unbounded', sans-serif; font-size: 36px; font-weight: 700; text-align: center; line-height: 1.2; }
+  .fc-hint { font-size: 13px; color: var(--muted); margin-top: 16px; }
+  .fc-controls { display: flex; gap: 10px; justify-content: center; }
+
+  /* Score */
+  .score-display { display: flex; gap: 30px; justify-content: center; margin-bottom: 20px; }
+  .score-box { text-align: center; }
+  .score-num { font-family: 'Unbounded', sans-serif; font-size: 32px; font-weight: 900; }
+  .score-num.green { color: var(--green); }
+  .score-num.red { color: var(--red); }
+  .score-label { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  /* MC */
+  .mc-lang-label { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); display: block; margin-bottom: 10px; text-align: center; }
+  .mc-question { font-family: 'Unbounded', sans-serif; font-size: 30px; font-weight: 700; text-align: center; padding: 24px; min-height: 110px; display: flex; align-items: center; justify-content: center; line-height: 1.3; }
+  .mc-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .mc-opt { background: var(--surface2); border: 1.5px solid var(--border); border-radius: 12px; padding: 14px 16px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; color: var(--text); cursor: pointer; transition: all 0.18s; text-align: left; }
+  .mc-opt:hover:not(:disabled) { border-color: var(--accent); background: rgba(79,142,247,0.08); }
+  .mc-opt.correct { border-color: var(--green) !important; background: rgba(61,220,151,0.12) !important; color: var(--green) !important; }
+  .mc-opt.wrong { border-color: var(--red) !important; background: rgba(230,57,70,0.12) !important; color: var(--red) !important; }
+  .mc-opt:disabled { cursor: default; }
+
+  /* Typing */
+  .type-question { font-family: 'Unbounded', sans-serif; font-size: 32px; font-weight: 700; text-align: center; padding: 20px; line-height: 1.3; }
+  .type-input-wrap { display: flex; gap: 10px; }
+  .type-input { flex: 1; background: var(--surface2); border: 1.5px solid var(--border); border-radius: 12px; padding: 14px 18px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 16px; outline: none; transition: border-color 0.2s; }
+  .type-input.cyrillic-input { font-size: 18px; }
+  .type-input:focus { border-color: var(--accent); }
+  .type-input.correct { border-color: var(--green) !important; }
+  .type-input.wrong { border-color: var(--red) !important; }
+  .feedback { text-align: center; padding: 14px; font-size: 15px; border-radius: 12px; margin-top: 14px; font-weight: 500; min-height: 52px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .feedback.correct { background: rgba(61,220,151,0.12); color: var(--green); }
+  .feedback.wrong { background: rgba(230,57,70,0.12); color: var(--red); }
+
+  /* Matching */
+  .match-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .match-col-label { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+  .match-item { background: var(--surface2); border: 1.5px solid var(--border); border-radius: 12px; padding: 12px 14px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.18s; text-align: center; margin-bottom: 10px; }
+  .match-item.ru-item { font-size: 16px; }
+  .match-item:hover:not(.matched) { border-color: var(--gold); }
+  .match-item.selected { border-color: var(--accent); background: rgba(79,142,247,0.12); }
+  .match-item.matched { border-color: var(--green); background: rgba(61,220,151,0.1); color: var(--green); cursor: default; opacity: 0.6; }
+  .match-item.wrong-flash { border-color: var(--red); background: rgba(230,57,70,0.12); animation: shake 0.35s ease; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+
+  .upload-area { border: 2px dashed var(--border); border-radius: 14px; padding: 24px; text-align: center; color: var(--muted); font-size: 14px; cursor: pointer; transition: all 0.2s; margin-bottom: 14px; }
+  .upload-area:hover { border-color: var(--accent); color: var(--text); }
+
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--surface2); border: 1px solid var(--accent); border-radius: 12px; padding: 12px 24px; font-size: 14px; font-weight: 500; z-index: 999; opacity: 0; transition: opacity 0.3s; pointer-events: none; color: var(--text); }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="logo"><em>Рус</em><span>ские</span> Слова</div>
+    <div class="word-count" id="wordCount">0 слов</div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('add', this)">📚 Manage</button>
+    <button class="tab" onclick="switchTab('flash', this)">🃏 Flashcards</button>
+    <button class="tab" onclick="switchTab('mc', this)">🎯 Choice</button>
+    <button class="tab" onclick="switchTab('type', this)">⌨️ Typing</button>
+    <button class="tab" onclick="switchTab('match', this)">🔗 Match</button>
+  </div>
+
+  <!-- MANAGE -->
+  <div class="panel active" id="panel-add">
+    <div class="card">
+      <div class="section-title">Add a word</div>
+      <div class="input-row">
+        <input type="text" id="inputRU" class="cyrillic" placeholder="Русское слово" />
+        <input type="text" id="inputEN" placeholder="English translation" onkeydown="if(event.key==='Enter')addWord()" />
+        <button class="btn" onclick="addWord()">Add</button>
+      </div>
+      <div class="kb-label">Cyrillic keyboard — click to type into the Russian field</div>
+      <div class="keyboard" id="cyrillicKB"></div>
+      <div class="divider"></div>
+      <div class="section-title">Import from CSV</div>
+      <div class="upload-area" onclick="document.getElementById('csvFile').click()">
+        <input type="file" id="csvFile" accept=".csv,.txt" onchange="importCSV(event)" style="display:none">
+        📎 Click to upload a CSV file<br>
+        <span style="font-size:12px;margin-top:6px;display:block">Format: Russian,English — one pair per line</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-title">Your word list</div>
+      <div class="word-list" id="wordList"></div>
+    </div>
+  </div>
+
+  <!-- FLASHCARDS -->
+  <div class="panel" id="panel-flash">
+    <div class="card">
+      <div class="progress-bar"><div class="progress-fill" id="fcProgress" style="width:0%"></div></div>
+      <div class="flashcard-wrap">
+        <div class="flashcard" id="flashcard" onclick="flipCard()">
+          <div class="fc-front">
+            <div class="fc-lang" id="fcLang">РУССКИЙ</div>
+            <div class="fc-word" id="fcWord">—</div>
+            <div class="fc-hint">click to flip</div>
+          </div>
+          <div class="fc-back">
+            <div class="fc-lang" id="fcLangBack">ENGLISH</div>
+            <div class="fc-word" id="fcWordBack">—</div>
+          </div>
+        </div>
+      </div>
+      <div class="fc-controls">
+        <button class="btn secondary" onclick="prevCard()">← Prev</button>
+        <button class="btn secondary" onclick="shuffleFlash()">🔀 Shuffle</button>
+        <button class="btn" onclick="nextCard()">Next →</button>
+      </div>
+      <div style="text-align:center;margin-top:14px;color:var(--muted);font-size:13px" id="fcCounter"></div>
+    </div>
+  </div>
+
+  <!-- MULTIPLE CHOICE -->
+  <div class="panel" id="panel-mc">
+    <div class="card">
+      <div class="progress-bar"><div class="progress-fill" id="mcProgress" style="width:0%"></div></div>
+      <div class="score-display">
+        <div class="score-box"><div class="score-num green" id="mcCorrect">0</div><div class="score-label">Correct</div></div>
+        <div class="score-box"><div class="score-num red" id="mcWrong">0</div><div class="score-label">Wrong</div></div>
+      </div>
+      <span class="mc-lang-label" id="mcLangLabel">Translate this word:</span>
+      <div class="mc-question" id="mcQuestion">—</div>
+      <div class="mc-options" id="mcOptions"></div>
+    </div>
+  </div>
+
+  <!-- TYPING -->
+  <div class="panel" id="panel-type">
+    <div class="card">
+      <div class="progress-bar"><div class="progress-fill" id="typeProgress" style="width:0%"></div></div>
+      <div class="score-display">
+        <div class="score-box"><div class="score-num green" id="typeCorrect">0</div><div class="score-label">Correct</div></div>
+        <div class="score-box"><div class="score-num red" id="typeWrong">0</div><div class="score-label">Wrong</div></div>
+      </div>
+      <span class="mc-lang-label" id="typeLangLabel">Type the translation:</span>
+      <div class="type-question" id="typeQuestion">—</div>
+      <div class="type-input-wrap">
+        <input class="type-input" id="typeInput" placeholder="Your answer..." onkeydown="if(event.key==='Enter')checkType()" />
+        <button class="btn" onclick="checkType()">Check</button>
+      </div>
+      <div class="feedback" id="typeFeedback"></div>
+      <!-- Cyrillic keyboard for typing panel, shown when needed -->
+      <div id="typeKBWrap" style="margin-top:14px;display:none">
+        <div class="kb-label">Cyrillic keyboard</div>
+        <div class="keyboard" id="typeKB"></div>
+      </div>
+      <div style="text-align:center;margin-top:10px">
+        <button class="btn secondary" onclick="nextType()" id="typeNextBtn" style="display:none">Next →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MATCHING -->
+  <div class="panel" id="panel-match">
+    <div class="card">
+      <div class="score-display">
+        <div class="score-box"><div class="score-num green" id="matchScore">0</div><div class="score-label">Matched</div></div>
+        <div class="score-box"><div class="score-num" id="matchTotal" style="color:var(--muted)">0</div><div class="score-label">Total</div></div>
+      </div>
+      <div class="match-grid">
+        <div>
+          <div class="match-col-label">🇷🇺 Русский</div>
+          <div id="matchRU"></div>
+        </div>
+        <div>
+          <div class="match-col-label">🇺🇸 English</div>
+          <div id="matchEN"></div>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:20px">
+        <button class="btn" onclick="initMatch()">🔀 New Round</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ---- CYRILLIC KEYBOARD ----
+const cyrRows = [
+  ['й','ц','у','к','е','н','г','ш','щ','з','х','ъ'],
+  ['ф','ы','в','а','п','р','о','л','д','ж','э'],
+  ['я','ч','с','м','и','т','ь','б','ю','ё'],
+];
+
+function buildKB(containerId, targetId) {
+  const kb = document.getElementById(containerId);
+  kb.innerHTML = '';
+  cyrRows.forEach(row => {
+    row.forEach(ch => {
+      const btn = document.createElement('button');
+      btn.className = 'key';
+      btn.textContent = ch;
+      btn.onclick = () => {
+        const inp = document.getElementById(targetId);
+        const pos = inp.selectionStart;
+        const val = inp.value;
+        inp.value = val.slice(0, pos) + ch + val.slice(inp.selectionEnd);
+        inp.selectionStart = inp.selectionEnd = pos + 1;
+        inp.focus();
+      };
+      kb.appendChild(btn);
+    });
+    // newline spacer (just add a full-width break)
+    const br = document.createElement('div');
+    br.style.width = '100%';
+    br.style.height = '0';
+    kb.appendChild(br);
+  });
+  // Space & backspace
+  const space = document.createElement('button');
+  space.className = 'key space-key';
+  space.textContent = 'ПРОБЕЛ (space)';
+  space.onclick = () => {
+    const inp = document.getElementById(targetId);
+    const pos = inp.selectionStart;
+    inp.value = inp.value.slice(0, pos) + ' ' + inp.value.slice(inp.selectionEnd);
+    inp.selectionStart = inp.selectionEnd = pos + 1;
+    inp.focus();
+  };
+  kb.appendChild(space);
+  const back = document.createElement('button');
+  back.className = 'key back-key';
+  back.textContent = '⌫';
+  back.onclick = () => {
+    const inp = document.getElementById(targetId);
+    const pos = inp.selectionStart;
+    if (pos > 0) {
+      inp.value = inp.value.slice(0, pos - 1) + inp.value.slice(inp.selectionEnd);
+      inp.selectionStart = inp.selectionEnd = pos - 1;
+    }
+    inp.focus();
+  };
+  kb.appendChild(back);
+}
+
+// ---- DATA ----
+let words = JSON.parse(localStorage.getItem('russkiye_words') || 'null');
+if (!words) {
+  words = [
+    {ru:'привет', en:'hello'},
+    {ru:'спасибо', en:'thank you'},
+    {ru:'да', en:'yes'},
+    {ru:'нет', en:'no'},
+    {ru:'кот', en:'cat'},
+    {ru:'собака', en:'dog'},
+    {ru:'есть', en:'to eat'},
+    {ru:'вода', en:'water'},
+  ];
+  save();
+}
+
+function save() {
+  localStorage.setItem('russkiye_words', JSON.stringify(words));
+  updateWordCount();
+}
+function updateWordCount() {
+  const n = words.length;
+  document.getElementById('wordCount').textContent = n + ' ' + (n === 1 ? 'слово' : n < 5 ? 'слова' : 'слов');
+}
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function rDir() { return Math.random() > 0.5; }
+
+// ---- TABS ----
+function switchTab(name, el) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  el.classList.add('active');
+  renderWordList();
+  if (name === 'flash') initFlash();
+  if (name === 'mc') initMC();
+  if (name === 'type') initType();
+  if (name === 'match') initMatch();
+}
+
+// ---- MANAGE ----
+function addWord() {
+  const ru = document.getElementById('inputRU').value.trim();
+  const en = document.getElementById('inputEN').value.trim();
+  if (!ru || !en) { toast('Enter both fields!'); return; }
+  words.push({ru, en});
+  save();
+  renderWordList();
+  document.getElementById('inputRU').value = '';
+  document.getElementById('inputEN').value = '';
+  document.getElementById('inputRU').focus();
+  toast('Добавлено: ' + ru);
+}
+
+function deleteWord(i) {
+  const w = words[i].ru;
+  words.splice(i, 1);
+  save();
+  renderWordList();
+  toast('Удалено: ' + w);
+}
+
+function renderWordList() {
+  const list = document.getElementById('wordList');
+  if (words.length === 0) {
+    list.innerHTML = '<div class="empty-state"><div class="big">🇷🇺</div>No words yet — add some above!</div>';
+    return;
+  }
+  list.innerHTML = words.map((w, i) => `
+    <div class="word-item">
+      <div class="word-pair">
+        <span class="ru">${w.ru}</span>
+        <span class="arrow">→</span>
+        <span class="en">${w.en}</span>
+      </div>
+      <button class="del-btn" onclick="deleteWord(${i})">✕</button>
+    </div>
+  `).join('');
+}
+
+function importCSV(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const lines = ev.target.result.split('\n').filter(l => l.trim());
+    let added = 0;
+    lines.forEach(line => {
+      const parts = line.split(',');
+      if (parts.length >= 2) {
+        const ru = parts[0].trim();
+        const en = parts.slice(1).join(',').trim().replace(/^"|"$/g,'');
+        if (ru && en) { words.push({ru, en}); added++; }
+      }
+    });
+    save();
+    renderWordList();
+    toast('Imported ' + added + ' words!');
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+// ---- FLASHCARDS ----
+let fcDeck = [], fcIdx = 0, fcDir = true;
+
+function initFlash() {
+  if (words.length === 0) { document.getElementById('fcWord').textContent = 'Add words first!'; return; }
+  fcDeck = shuffle(words);
+  fcIdx = 0;
+  showFC();
+}
+function showFC() {
+  document.getElementById('flashcard').classList.remove('flipped');
+  const w = fcDeck[fcIdx];
+  fcDir = rDir();
+  document.getElementById('fcWord').textContent = fcDir ? w.ru : w.en;
+  document.getElementById('fcWordBack').textContent = fcDir ? w.en : w.ru;
+  document.getElementById('fcLang').textContent = fcDir ? 'РУССКИЙ' : 'ENGLISH';
+  document.getElementById('fcLangBack').textContent = fcDir ? 'ENGLISH' : 'РУССКИЙ';
+  document.getElementById('fcCounter').textContent = (fcIdx + 1) + ' / ' + fcDeck.length;
+  document.getElementById('fcProgress').style.width = ((fcIdx + 1) / fcDeck.length * 100) + '%';
+}
+function flipCard() { document.getElementById('flashcard').classList.toggle('flipped'); }
+function nextCard() { fcIdx = (fcIdx + 1) % fcDeck.length; showFC(); }
+function prevCard() { fcIdx = (fcIdx - 1 + fcDeck.length) % fcDeck.length; showFC(); }
+function shuffleFlash() { fcDeck = shuffle(fcDeck); fcIdx = 0; showFC(); toast('Перемешано!'); }
+
+// ---- MULTIPLE CHOICE ----
+let mcQueue = [], mcIdx = 0, mcC = 0, mcW = 0;
+
+function initMC() {
+  if (words.length < 2) {
+    document.getElementById('mcQuestion').textContent = 'Need at least 2 words!';
+    document.getElementById('mcOptions').innerHTML = '';
+    return;
+  }
+  mcQueue = shuffle(words);
+  mcIdx = 0; mcC = 0; mcW = 0;
+  document.getElementById('mcCorrect').textContent = 0;
+  document.getElementById('mcWrong').textContent = 0;
+  showMC();
+}
+function showMC() {
+  if (mcIdx >= mcQueue.length) {
+    document.getElementById('mcQuestion').textContent = '🎉 Round complete!';
+    document.getElementById('mcLangLabel').textContent = 'Score: ' + mcC + '/' + mcQueue.length;
+    document.getElementById('mcOptions').innerHTML = '<div style="grid-column:span 2;text-align:center;margin-top:10px"><button class="btn" onclick="initMC()">Play Again</button></div>';
+    return;
+  }
+  const w = mcQueue[mcIdx];
+  const dir = rDir(); // true = show RU, answer EN
+  document.getElementById('mcProgress').style.width = (mcIdx / mcQueue.length * 100) + '%';
+  document.getElementById('mcLangLabel').textContent = dir ? 'What does this mean in English?' : 'How do you say this in Russian?';
+  document.getElementById('mcQuestion').textContent = dir ? w.ru : w.en;
+  let pool = words.filter(x => x !== w);
+  let wrongs = shuffle(pool).slice(0, Math.min(3, pool.length));
+  let opts = shuffle([w, ...wrongs]);
+  document.getElementById('mcOptions').innerHTML = opts.map(opt => {
+    const label = dir ? opt.en : opt.ru;
+    const isCorrect = opt === w;
+    return `<button class="mc-opt" onclick="checkMC(this,${isCorrect})">${label}</button>`;
+  }).join('');
+}
+function checkMC(btn, correct) {
+  document.querySelectorAll('.mc-opt').forEach(b => b.disabled = true);
+  if (correct) {
+    btn.classList.add('correct');
+    mcC++;
+    document.getElementById('mcCorrect').textContent = mcC;
+    setTimeout(() => { mcIdx++; showMC(); }, 800);
+  } else {
+    btn.classList.add('wrong');
+    mcW++;
+    document.getElementById('mcWrong').textContent = mcW;
+    document.querySelectorAll('.mc-opt').forEach(b => {
+      if (b.getAttribute('onclick') && b.getAttribute('onclick').includes('true')) b.classList.add('correct');
+    });
+    setTimeout(() => { mcIdx++; showMC(); }, 1400);
+  }
+}
+
+// ---- TYPING ----
+let typeQueue = [], typeIdx = 0, typeC = 0, typeW = 0, typeCurrent = null, typeDir = true;
+
+function initType() {
+  if (words.length === 0) { document.getElementById('typeQuestion').textContent = 'Add words first!'; return; }
+  typeQueue = shuffle(words);
+  typeIdx = 0; typeC = 0; typeW = 0;
+  document.getElementById('typeCorrect').textContent = 0;
+  document.getElementById('typeWrong').textContent = 0;
+  showType();
+}
+function showType() {
+  document.getElementById('typeFeedback').textContent = '';
+  document.getElementById('typeFeedback').className = 'feedback';
+  document.getElementById('typeInput').value = '';
+  document.getElementById('typeInput').className = 'type-input';
+  document.getElementById('typeNextBtn').style.display = 'none';
+  document.getElementById('typeInput').disabled = false;
+  document.getElementById('typeInput').focus();
+
+  if (typeIdx >= typeQueue.length) {
+    document.getElementById('typeQuestion').textContent = '🎉 Round complete!';
+    document.getElementById('typeLangLabel').textContent = 'Score: ' + typeC + '/' + typeQueue.length;
+    document.getElementById('typeKBWrap').style.display = 'none';
+    document.getElementById('typeNextBtn').textContent = 'Play Again';
+    document.getElementById('typeNextBtn').style.display = 'inline-block';
+    document.getElementById('typeNextBtn').onclick = initType;
+    return;
+  }
+  typeCurrent = typeQueue[typeIdx];
+  typeDir = rDir(); // true = show RU → type EN; false = show EN → type RU
+  document.getElementById('typeProgress').style.width = (typeIdx / typeQueue.length * 100) + '%';
+  document.getElementById('typeLangLabel').textContent = typeDir ? 'Type the English translation:' : 'Type the Russian word:';
+  document.getElementById('typeQuestion').textContent = typeDir ? typeCurrent.ru : typeCurrent.en;
+
+  const input = document.getElementById('typeInput');
+  if (!typeDir) {
+    // typing Russian — show keyboard, style input
+    input.className = 'type-input cyrillic-input';
+    input.placeholder = 'Введите ответ...';
+    document.getElementById('typeKBWrap').style.display = 'block';
+    buildKB('typeKB', 'typeInput');
+  } else {
+    input.className = 'type-input';
+    input.placeholder = 'Your answer...';
+    document.getElementById('typeKBWrap').style.display = 'none';
+  }
+}
+function checkType() {
+  const input = document.getElementById('typeInput');
+  const answer = input.value.trim().toLowerCase();
+  const correct = (typeDir ? typeCurrent.en : typeCurrent.ru).toLowerCase();
+  const fb = document.getElementById('typeFeedback');
+  if (!answer) return;
+  input.disabled = true;
+  if (answer === correct) {
+    input.classList.add('correct');
+    fb.textContent = '✓ Правильно!';
+    fb.className = 'feedback correct';
+    typeC++;
+    document.getElementById('typeCorrect').textContent = typeC;
+    setTimeout(() => { typeIdx++; showType(); }, 900);
+  } else {
+    input.classList.add('wrong');
+    fb.textContent = '✗ Answer: ' + (typeDir ? typeCurrent.en : typeCurrent.ru);
+    fb.className = 'feedback wrong';
+    typeW++;
+    document.getElementById('typeWrong').textContent = typeW;
+    document.getElementById('typeNextBtn').style.display = 'inline-block';
+    document.getElementById('typeNextBtn').textContent = 'Next →';
+    document.getElementById('typeNextBtn').onclick = nextType;
+  }
+}
+function nextType() { typeIdx++; showType(); }
+
+// ---- MATCHING ----
+let matchPairs = [], matchSel = null, matchDone = 0;
+
+function initMatch() {
+  if (words.length === 0) return;
+  const count = Math.min(6, words.length);
+  matchPairs = shuffle(words).slice(0, count);
+  matchSel = null; matchDone = 0;
+  document.getElementById('matchScore').textContent = 0;
+  document.getElementById('matchTotal').textContent = count;
+  const ruList = shuffle(matchPairs);
+  const enList = shuffle(matchPairs);
+  document.getElementById('matchRU').innerHTML = ruList.map(w =>
+    `<div class="match-item ru-item" data-ru="${w.ru}" data-en="${w.en}" data-side="ru" onclick="selectMatch(this)">${w.ru}</div>`
+  ).join('');
+  document.getElementById('matchEN').innerHTML = enList.map(w =>
+    `<div class="match-item" data-ru="${w.ru}" data-en="${w.en}" data-side="en" onclick="selectMatch(this)">${w.en}</div>`
+  ).join('');
+}
+function selectMatch(el) {
+  if (el.classList.contains('matched')) return;
+  if (!matchSel) {
+    el.classList.add('selected');
+    matchSel = el;
+  } else {
+    if (el === matchSel) { el.classList.remove('selected'); matchSel = null; return; }
+    const a = matchSel, b = el;
+    const match = a.dataset.ru === b.dataset.ru && a.dataset.en === b.dataset.en && a.dataset.side !== b.dataset.side;
+    if (match) {
+      a.classList.remove('selected'); a.classList.add('matched');
+      b.classList.add('matched');
+      matchDone++;
+      document.getElementById('matchScore').textContent = matchDone;
+      matchSel = null;
+      if (matchDone === matchPairs.length) setTimeout(() => toast('🎉 Отлично!'), 200);
+    } else {
+      a.classList.remove('selected'); a.classList.add('wrong-flash'); b.classList.add('wrong-flash');
+      setTimeout(() => { a.classList.remove('wrong-flash'); b.classList.remove('wrong-flash'); }, 400);
+      matchSel = null;
+    }
+  }
+}
+
+// Init
+buildKB('cyrillicKB', 'inputRU');
+renderWordList();
+updateWordCount();
+</script>
+</body>
+</html>
